@@ -38,6 +38,9 @@ class Command(BaseCommand):
                  "This option will only work when you specify one model.")
         parser.add_argument('-o', '--output', default=None, dest='output',
             help='Specifies file to which the output is written.')
+        parser.add_argument('-w', '--where', dest='where',
+            help="Only dump objects that match the given comma separated filter conditions."
+                 "e.g. -w 'start_time__gt=2015-01-01,id__gt=10'")
 
     def handle(self, *app_labels, **options):
         format = options.get('format')
@@ -50,6 +53,7 @@ class Command(BaseCommand):
         use_natural_primary_keys = options.get('use_natural_primary_keys')
         use_base_manager = options.get('use_base_manager')
         pks = options.get('primary_keys')
+        where = options.get('where')
 
         if pks:
             primary_keys = pks.split(',')
@@ -75,12 +79,17 @@ class Command(BaseCommand):
         if len(app_labels) == 0:
             if primary_keys:
                 raise CommandError("You can only use --pks option with one model")
+            if where:
+                raise CommandError("You can only use --where option with one model")
             app_list = OrderedDict((app_config, None)
                 for app_config in apps.get_app_configs()
                 if app_config.models_module is not None and app_config not in excluded_apps)
         else:
-            if len(app_labels) > 1 and primary_keys:
-                raise CommandError("You can only use --pks option with one model")
+            if len(app_labels) > 1:
+                if primary_keys:
+                    raise CommandError("You can only use --pks option with one model")
+                if where:
+                    raise CommandError("You can only use --where option with one model")
             app_list = OrderedDict()
             for label in app_labels:
                 try:
@@ -107,6 +116,8 @@ class Command(BaseCommand):
                 except ValueError:
                     if primary_keys:
                         raise CommandError("You can only use --pks option with one model")
+                    if where:
+                        raise CommandError("You can only use --where option with one model")
                     # This is just an app - no model qualifier
                     app_label = label
                     try:
@@ -144,6 +155,9 @@ class Command(BaseCommand):
                     queryset = objects.using(using).order_by(model._meta.pk.name)
                     if primary_keys:
                         queryset = queryset.filter(pk__in=primary_keys)
+                    if where:
+                        where_params = dict(map(lambda c: c.split('='), where.split(",")))
+                        queryset = queryset.filter(**where_params)
                     if count_only:
                         yield queryset.order_by().count()
                     else:
