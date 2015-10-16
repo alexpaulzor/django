@@ -177,8 +177,8 @@ class Command(BaseCommand):
                 serializers.serialize(format, get_objects(), indent=indent,
                         use_natural_foreign_keys=use_natural_foreign_keys,
                         use_natural_primary_keys=use_natural_primary_keys,
-                        stream=stream or self.stdout, progress_output=progress_output,
-                        object_count=object_count)
+                        stream=stream or self.stdout) #, progress_output=progress_output,
+                        #object_count=object_count) # Removed to work with our version of django
             finally:
                 if stream:
                     stream.close()
